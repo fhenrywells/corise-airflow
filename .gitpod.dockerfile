@@ -1,1 +1,1 @@
-
+FROM gitpod/workspace-postgresql
