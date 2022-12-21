@@ -1,8 +1,3 @@
-image: 
-  file: .gitpod.Dockerfile
-
-ports:
-  - port: 8008
-    onOpen: ignore
-  - port: 5432
-    onOpen: ignore
+tasks:
+  - init: brew install astro
+    command: astro dev restart
