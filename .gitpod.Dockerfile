@@ -1,1 +1,1 @@
-FROM hweller/corise/airflow-course:0.0.1
+FROM hweller/corise-airflow-course:0.0.1
