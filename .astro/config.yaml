@@ -1,0 +1,5 @@
+project:
+  name: corise-airflow
+postgres:
+  port: 5435
+
