@@ -6,4 +6,4 @@ image:
   file: .gitpod.Dockerfile
 
 tasks:
-  - init: astro dev restart
+  - init: astro dev start
