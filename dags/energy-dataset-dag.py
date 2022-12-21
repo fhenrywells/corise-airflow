@@ -22,26 +22,12 @@ def energy_dataset_dag():
     """
     ### Basic ETL Dag
     This is a simple ETL data pipeline example that demonstrates the use of
-    the TaskFlow API using three simple tasks for scrape, extract, and load.
-    For more information on Airflow's TaskFlow API, reference documentation here:
-    https://airflow.apache.org/docs/apache-airflow/stable/tutorial_taskflow_api.html
+    the TaskFlow API using two simple tasks to extract data from a zipped folder
+    and load it to GCS.
+
     """
 
-    @task()
-    def scrape():
-        """
-        #### Scrape task
-        A scrape task to get data ready for the rest of the
-        pipeline. In this case, we will be downloading a zipped file from Kaggle
-        containing csv energy generation and timeseries data
-        """
-        import os
-        # TODO Download data from Kaggle API
-        # cli cmd to download: 
-        # kaggle datasets download nicholasjhana/energy-consumption-generation-prices-and-weather
-
-
-    @task()
+    @task
     def extract() -> "List[pd.DataFrame]":
         """
         #### Extract task
@@ -55,7 +41,7 @@ def energy_dataset_dag():
         # TODO Unzip files into pandas dataframes
 
 
-    @task()
+    @task
     def load(unzip_result: "List[pd.DataFrame]"):
         """
         #### Load task

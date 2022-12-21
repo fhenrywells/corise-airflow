@@ -1,1 +1,4 @@
-kaggle
+fsspec
+gcsfs
+xgboost
+scikit-learn
