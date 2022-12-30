@@ -32,8 +32,7 @@ def energy_dataset_dag():
         """
         #### Extract task
         A simple task that loads each file in the zipped file into a dataframe,
-        building a list of dataframes that is returned
-
+        building a list of dataframes that is returned.
 
         """
         import pandas as pd
@@ -46,7 +45,7 @@ def energy_dataset_dag():
         """
         #### Load task
         A simple "load" task that takes in the result of the "transform" task, prints out the 
-        schema, and then loads the data into GCS
+        schema, and then writes the data into GCS as parquet files.
         """
 
         from airflow.providers.google.cloud.hooks.gcs import GCSHook
