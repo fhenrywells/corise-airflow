@@ -20,7 +20,7 @@ def df_convert_dtypes(df, convert_from, convert_to):
 
 
 @task()
-def extract() -> "List[pd.DataFrame]":
+def extract() -> List[pd.DataFrame]:
     """
     #### Extract task
     A simple task that loads each file in the zipped file into a dataframe,
@@ -36,7 +36,7 @@ def extract() -> "List[pd.DataFrame]":
 
 
 @task
-def post_process_energy_df(df: "pd.DataFrame") -> "pd.DataFrame":
+def post_process_energy_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Prepare energy dataframe for merge with weather data
     """
@@ -62,7 +62,7 @@ def post_process_energy_df(df: "pd.DataFrame") -> "pd.DataFrame":
 
 
 @task
-def post_process_weather_df(df: "pd.DataFrame") -> "pd.DataFrame":
+def post_process_weather_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Prepare weather dataframe for merge with energy data
     """
@@ -99,7 +99,7 @@ def post_process_weather_df(df: "pd.DataFrame") -> "pd.DataFrame":
 
 
 @task
-def join_dataframes_and_post_process(df_energy: "pd.DataFrame", df_weather: "pd.DataFrame") -> "pd.DataFrame":
+def join_dataframes_and_post_process(df_energy: pd.DataFrame, df_weather: pd.DataFrame) -> pd.DataFrame:
     """
     Join dataframes and drop city-specific features
     """
@@ -126,7 +126,7 @@ def join_dataframes_and_post_process(df_energy: "pd.DataFrame", df_weather: "pd.
 
 
 @task
-def add_features(df: "pd.DataFrame") -> "pd.DataFrame":
+def add_features(df: pd.DataFrame) -> pd.DataFrame:
 
     """
     Extract helpful temporal, geographic, and highly correlated energy features
@@ -195,7 +195,7 @@ def add_features(df: "pd.DataFrame") -> "pd.DataFrame":
 
 
 @task
-def prepare_model_inputs(df_final: "pd.DataFrame"):
+def prepare_model_inputs(df_final: pd.DataFrame):
     """
     Transform each feature to fall within a range from 0 to 1, pull out the target price from the features, 
     and use PCA to reduce the features to those with an explained variance >= 0.80. Concatenate the scaled and 
@@ -253,7 +253,7 @@ def multivariate_data(dataset,
                       history_size,
                       target_size,
                       step, 
-                      single_step=False) -> Tuple["np.ndarray", "np.ndarray"]:
+                      single_step=False) -> Tuple[np.ndarray, np.ndarray]:
     """
     Produce subset of dataset indexed by data_indices, with a window size of history_size hours
     """
@@ -278,7 +278,7 @@ def multivariate_data(dataset,
 
 
 
-def train_xgboost(X_train, y_train, X_val, y_val) -> "xgb.Booster":
+def train_xgboost(X_train, y_train, X_val, y_val) -> xgb.Booster:
     """
     Train xgboost model using training set and evaluated against evaluation set, using 
         a set of model parameters
@@ -301,7 +301,7 @@ def train_xgboost(X_train, y_train, X_val, y_val) -> "xgb.Booster":
 
 
 @task
-def produce_indices() -> List[Tuple["np.ndarray", "np.ndarray"]]:
+def produce_indices() -> List[Tuple[np.ndarray, np.ndarray]]:
     """
     Produce zipped list of training and validation indices
 
@@ -317,8 +317,8 @@ def produce_indices() -> List[Tuple["np.ndarray", "np.ndarray"]]:
 
 
 @task
-def format_data_and_train_model(dataset_norm: "np.ndarray",
-                                indices: Tuple["np.ndarray", "np.ndarray"]) -> "xgb.Booster":
+def format_data_and_train_model(dataset_norm: np.ndarray,
+                                indices: Tuple[np.ndarray, np.ndarray]) -> xgb.Booster:
     """
     Extract training and validation sets and labels, and train a model with a given
     set of training and validation indices
@@ -337,7 +337,7 @@ def format_data_and_train_model(dataset_norm: "np.ndarray",
 
 
 @task
-def select_best_model(models: List["xgb.Booster"]):
+def select_best_model(models: List[xgb.Booster]):
     """
     Select model that generalizes the best against the validation set, and 
     write this to GCS. The best_score is an attribute of the model, and corresponds to
@@ -400,6 +400,4 @@ with DAG("energy_price_prediction",
         group_1 = join_data_and_add_features() 
         group_2 = train_and_select_best_model()
         group_1 >> group_2
-
-
-# 
+ 

@@ -1,7 +1,8 @@
 from datetime import datetime
+from typing import List
 
+import pandas as pd
 from airflow.decorators import dag, task # DAG and task decorators for interfacing with the TaskFlow API
-
 
 @dag(
     # This defines how often your DAG will run, or the schedule by which your DAG runs. In this case, this DAG
@@ -28,20 +29,19 @@ def energy_dataset_dag():
     """
 
     @task
-    def extract() -> "List[pd.DataFrame]":
+    def extract() -> List[pd.DataFrame]:
         """
         #### Extract task
         A simple task that loads each file in the zipped file into a dataframe,
         building a list of dataframes that is returned.
 
         """
-        import pandas as pd
         from zipfile import ZipFile
         # TODO Unzip files into pandas dataframes
 
 
     @task
-    def load(unzip_result: "List[pd.DataFrame]"):
+    def load(unzip_result: List[pd.DataFrame]):
         """
         #### Load task
         A simple "load" task that takes in the result of the "transform" task, prints out the 
