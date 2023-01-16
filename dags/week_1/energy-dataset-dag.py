@@ -51,6 +51,13 @@ def energy_dataset_dag():
         from airflow.providers.google.cloud.hooks.gcs import GCSHook
 
         data_types = ['generation', 'weather']
+
+        # GCSHook uses google_cloud_default connection by default, so we can easily create a GCS client using it
+        # https://github.com/apache/airflow/blob/207f65b542a8aa212f04a9d252762643cfd67a74/airflow/providers/google/cloud/hooks/gcs.py#L133
+
+        # The google cloud storage github repo has a helpful example for writing from pandas to GCS:
+        # https://github.com/googleapis/python-storage/blob/main/samples/snippets/storage_fileio_pandas.py
+        
         client = GCSHook().get_conn()       \
         # TODO Add GCS upload code
 
