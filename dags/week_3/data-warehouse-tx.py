@@ -155,7 +155,7 @@ def data_warehouse_transform_dag():
         """
 
         from airflow.providers.google.cloud.hooks.gcs import GCSHook
-
+        
         client = GCSHook().get_conn()       
         bucket = client.get_bucket(DESTINATION_BUCKET)
 
@@ -165,6 +165,14 @@ def data_warehouse_transform_dag():
             df.columns = df.columns.str.replace("-", "_")
             bucket.blob(f"week-3/{DATA_TYPES[index]}").upload_from_string(df.to_parquet(), "text/parquet")
             print(df.dtypes)
+
+    @task_group
+    def create_bigquery_dataset():
+        from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateEmptyDatasetOperator
+
+        # TODO Modify here to create a BigQueryDataset if one does not already exist
+        # This is where your tables and views will be created
+    
 
     @task_group
     def create_external_tables():
@@ -204,8 +212,10 @@ def data_warehouse_transform_dag():
 
     unzip_task = extract()
     load_task = load(unzip_task)
+    create_bigquery_dataset_task = create_bigquery_dataset()
+    load_task >> create_bigquery_dataset_task
     external_table_task = create_external_tables()
-    load_task >> external_table_task
+    create_bigquery_dataset >> external_table_task
     normal_view_task = produce_normalized_views()
     external_table_task >> normal_view_task
     joined_view_task = produce_joined_view()
