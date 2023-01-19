@@ -7,7 +7,7 @@ from typing import List
 from airflow.decorators import dag, task, task_group
 
 PROJECT_ID = "corise-airflow"
-DESTINATION_BUCKET = # Modify HERE
+# DESTINATION_BUCKET = # Modify HERE
 BQ_DATASET_NAME = "timeseries_energy"
 
 DATA_TYPES = ["generation", "weather"] 
@@ -134,7 +134,7 @@ def data_warehouse_transform_dag():
     def produce_select_statement(timestamp_column: str, columns: List[str]) -> str:
         # TODO Modify here to produce a select statement by casting 'timestamp_column' to 
         # TIMESTAMP type, and selecting all of the columns in 'columns'
-
+        pass
 
     @task_group
     def produce_normalized_views():

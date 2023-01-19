@@ -1,4 +1,5 @@
 fsspec
 gcsfs
+pyarrow==8.0.0
 xgboost
 scikit-learn

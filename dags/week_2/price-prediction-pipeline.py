@@ -1,13 +1,16 @@
 
 from datetime import datetime
 from typing import Dict, List, Tuple, Union
+
+import numpy as np
+import pandas as pd
+import xgboost as xgb
 from airflow.operators.empty import EmptyOperator
 from airflow.models.dag import DAG
 from airflow.decorators import task, task_group
 
-
 TRAINING_DATA_PATH = 'week-2/price_prediction_training_data.csv'
-DATASET_NORM_WRITE_BUCKET = '' # Modify here
+# DATASET_NORM_WRITE_BUCKET = '' # Modify here
 
 VAL_END_INDEX = 31056
 
@@ -28,7 +31,6 @@ def extract() -> List[pd.DataFrame]:
 
 
     """
-    import pandas as pd
     from zipfile import ZipFile
     filename = "/usr/local/airflow/dags/data/energy-consumption-generation-prices-and-weather.zip"
     dfs = [pd.read_csv(ZipFile(filename).open(i)) for i in ZipFile(filename).namelist()]
@@ -69,8 +71,6 @@ def post_process_weather_df(df: pd.DataFrame) -> pd.DataFrame:
 
 
     # Convert all ints to floats
-    import pandas as pd
-    import numpy as np
     df = df_convert_dtypes(df, np.int64, np.float64)
 
     # Extract timestamp 
@@ -105,7 +105,6 @@ def join_dataframes_and_post_process(df_energy: pd.DataFrame, df_weather: pd.Dat
     """
 
 
-    import pandas as pd
     df_final = df_energy
     df_1, df_2, df_3, df_4, df_5 = [x for _, x in df_weather.groupby('city_name')]
     dfs = [df_1, df_2, df_3, df_4, df_5]
@@ -131,8 +130,6 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Extract helpful temporal, geographic, and highly correlated energy features
     """
-    import pandas as pd
-
     # Calculate the weight of every city
     total_pop = 6155116 + 5179243 + 1645342 + 1305342 + 987000
     weight_Madrid = 6155116 / total_pop
@@ -205,9 +202,6 @@ def prepare_model_inputs(df_final: pd.DataFrame):
     from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
     from sklearn.decomposition import PCA
     from airflow.providers.google.cloud.hooks.gcs import GCSHook
-    import pandas as pd
-    import numpy as np
-
 
     X = df_final[df_final.columns.drop('price actual')].values
     y = df_final['price actual'].values
@@ -239,7 +233,6 @@ def read_dataset_norm():
     """
 
     from airflow.providers.google.cloud.hooks.gcs import GCSHook
-    import pandas as pd
     import io
     client = GCSHook().get_conn()
     read_bucket = client.bucket(DATASET_NORM_WRITE_BUCKET)
@@ -258,7 +251,6 @@ def multivariate_data(dataset,
     Produce subset of dataset indexed by data_indices, with a window size of history_size hours
     """
 
-    import numpy as np
     target = dataset[:, -1]
     data = []
     labels = []
@@ -283,8 +275,6 @@ def train_xgboost(X_train, y_train, X_val, y_val) -> xgb.Booster:
     Train xgboost model using training set and evaluated against evaluation set, using 
         a set of model parameters
     """
-
-    import xgboost as xgb
 
     X_train_xgb = X_train.reshape(-1, X_train.shape[1] * X_train.shape[2])
     X_val_xgb = X_val.reshape(-1, X_val.shape[1] * X_val.shape[2])
@@ -358,7 +348,7 @@ def join_data_and_add_features():
       5. Producing a dimension-reduced numpy array containing the most
          significant features, and save it to GCS
     """
-    scrape_task >>  extract()
+    output = extract()
     df_energy, df_weather =  output["df_energy"], output["df_weather"]
     df_energy = post_process_energy_df(df_energy)
     df_weather = post_process_weather_df(df_weather)
