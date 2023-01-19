@@ -78,3 +78,5 @@ def astro_sdk_transform_dag
 
     # Cleans up all temporary tables produced by the SDK
     aql.cleanup()
+
+astro_sdk_transform_dag = astro_sdk_transform_dag()
