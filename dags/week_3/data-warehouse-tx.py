@@ -12,60 +12,6 @@ BQ_DATASET_NAME = "timeseries_energy"
 
 DATA_TYPES = ["generation", "weather"] 
 
-# Schema for each of the data types
-SCHEMAS = {
-    "generation": 
-        [
-            {"name": "time", "type": "STRING", "mode": "NULLABLE"},
-            {"name": "generation_biomass", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_fossil_brown_coal_lignite", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_fossil_coal_derived_gas", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_fossil_gas", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_fossil_hard_coal", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_fossil_oil", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_fossil_oil_shale", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_fossil_peat", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_geothermal", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_hydro_pumped_storage_aggregated", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_hydro_pumped_storage_consumption", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_hydro_run_of_river_and_poundage", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_hydro_water_reservoir", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_marine", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_nuclear", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_other", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_other_renewable", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_solar", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_waste", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_wind_offshore", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "generation_wind_onshore", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "forecast_solar_day_ahead", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "forecast_wind_offshore_eday_ahead", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "forecast_wind_onshore_day_ahead", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "total_load_forecast", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "total_load_actual", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "price_day_ahead", "type": "FLOAT64", "mode": "REQUIRED"},
-            {"name": "price_actual", "type": "FLOAT64", "mode": "REQUIRED"},
-    ],
-    "weather": [ 
-        {"name": "dt_iso", "type": "STRING", "mode": "NULLABLE"},
-        {"name": "city_name", "type": "STRING", "mode": "NULLABLE"},
-        {"name": "temp", "type": "FLOAT64", "mode": "REQUIRED"},
-        {"name": "temp_min", "type": "FLOAT64", "mode": "REQUIRED"},
-        {"name": "temp_max", "type": "FLOAT64", "mode": "REQUIRED"},
-        {"name": "pressure", "type": "INTEGER", "mode": "REQUIRED"},
-        {"name": "humidity", "type": "INTEGER", "mode": "REQUIRED"},
-        {"name": "wind_speed", "type": "INTEGER", "mode": "REQUIRED"},
-        {"name": "wind_deg", "type": "INTEGER", "mode": "REQUIRED"},
-        {"name": "rain_1h", "type": "FLOAT64", "mode": "REQUIRED"},
-        {"name": "rain_3h", "type": "FLOAT64", "mode": "REQUIRED"},
-        {"name": "snow_3h", "type": "FLOAT64", "mode": "REQUIRED"},
-        {"name": "clouds_all", "type": "INTEGER", "mode": "REQUIRED"},
-        {"name": "weather_id", "type": "INTEGER", "mode": "REQUIRED"},
-        {"name": "weather_main", "type": "STRING", "mode": "NULLABLE"},
-        {"name": "weather_description", "type": "STRING", "mode": "NULLABLE"},
-        {"name": "weather_icon", "type": "STRING", "mode": "NULLABLE"}
-    ]
-} 
 
 normalized_columns = {
     "generation": {
@@ -163,7 +109,7 @@ def data_warehouse_transform_dag():
             df.columns = df.columns.str.replace(" ", "_")
             df.columns = df.columns.str.replace("/", "_")
             df.columns = df.columns.str.replace("-", "_")
-            bucket.blob(f"week-3/{DATA_TYPES[index]}").upload_from_string(df.to_parquet(), "text/parquet")
+            bucket.blob(f"week-3/{DATA_TYPES[index]}.parquet").upload_from_string(df.to_parquet(), "text/parquet")
             print(df.dtypes)
 
     @task_group
@@ -179,8 +125,7 @@ def data_warehouse_transform_dag():
         from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateExternalTableOperator
         tasks = []
 
-        # TODO Modify here to produce two external tables, one for each data type,
-        # using the schemas specified in SCHEMAS. 
+        # TODO Modify here to produce two external tables, one for each data type, referencing the data stored in GCS
 
         # When using the BigQueryCreateExternalTableOperator, it's suggested you use the table_resource
         # field to specify DDL configuration parameters. If you don't, then you will see an error
