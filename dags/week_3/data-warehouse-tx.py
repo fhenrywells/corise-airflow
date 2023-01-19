@@ -58,13 +58,10 @@ normalized_columns = {
 
 
 @dag(
-    schedule_interval="@daily",
+    schedule_interval=None,
     start_date=datetime(2021, 1, 1),
     catchup=False,
-    default_args={
-        "retries": 2, # If a task fails, it will retry 2 times.
-    },
-    tags=["example"]) # If set, this tag is shown in the DAG view of the Airflow UI
+    ) 
 def data_warehouse_transform_dag():
     """
     ### Data Warehouse Transform DAG
