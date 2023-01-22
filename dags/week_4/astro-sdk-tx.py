@@ -1,5 +1,3 @@
-import os
-
 import pandas as pd
 from airflow.decorators import DAG
 from airflow.utils import timezone
