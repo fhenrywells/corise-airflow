@@ -17,8 +17,8 @@ time_columns = {
 }
 
 filepaths = {
-    "generation": "gs://corise-airflow-weller/week-3/generation.parquet",
-    "weather": "gs://corise-airflow-weller/week-3/weather.parquet"
+    # "generation": fill in location of data from week 3
+    # "weather": " fill in location of data from week 3
 }
 
 
