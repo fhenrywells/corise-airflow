@@ -23,7 +23,7 @@ def df_convert_dtypes(df, convert_from, convert_to):
 
 
 @task()
-def extract() -> List[pd.DataFrame]:
+def extract() -> Dict[str, pd.DataFrame]:
     """
     #### Extract task
     A simple task that loads each file in the zipped file into a dataframe,
@@ -34,7 +34,10 @@ def extract() -> List[pd.DataFrame]:
     from zipfile import ZipFile
     filename = "/usr/local/airflow/dags/data/energy-consumption-generation-prices-and-weather.zip"
     dfs = [pd.read_csv(ZipFile(filename).open(i)) for i in ZipFile(filename).namelist()]
-    return dfs
+    return {
+        'df_energy': dfs[0],
+        'df_weather': dfs[1]
+    }
 
 
 @task
