@@ -58,7 +58,7 @@ def energy_dataset_dag():
         # The google cloud storage github repo has a helpful example for writing from pandas to GCS:
         # https://github.com/googleapis/python-storage/blob/main/samples/snippets/storage_fileio_pandas.py
         
-        client = GCSHook().get_conn()       \
+        client = GCSHook()     \
         # TODO Add GCS upload code
 
 
