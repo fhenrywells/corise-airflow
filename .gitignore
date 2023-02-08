@@ -6,3 +6,27 @@ __pycache__/
 *$py.class
 **/__pycache__
 *.pyc
+
+# General MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails MacOS
+._*
+
+# Files that might appear in the root of a volume MacOS
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share MacOS
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
