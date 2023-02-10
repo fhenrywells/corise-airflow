@@ -1,5 +1,5 @@
 import pandas as pd
-from airflow.decorators import DAG
+from airflow.models.dag import DAG
 from airflow.utils import timezone
 
 import astro.sql as aql
@@ -56,8 +56,11 @@ def join_tables(generation_table: Table, weather_table: Table):  # skipcq: PYL-W
     pass
 
               
-@dag(schedule_interval=None, start_date=datetime(2021, 1, 1), catchup=False)
-def astro_sdk_transform_dag
+with DAG(
+    dag_id="astro_sdk_transform_dag",
+    schedule_interval=None,
+    start_date=timezone.datetime(2022, 1, 1),
+) as dag:
     """
     ### Astro SDK Transform DAG
     This DAG performs four operations:
@@ -77,4 +80,3 @@ def astro_sdk_transform_dag
     # Cleans up all temporary tables produced by the SDK
     aql.cleanup()
 
-astro_sdk_transform_dag = astro_sdk_transform_dag()
