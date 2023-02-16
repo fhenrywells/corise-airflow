@@ -6,9 +6,9 @@ from typing import List
 from airflow.operators.empty import EmptyOperator
 from airflow.decorators import dag, task, task_group
 
-PROJECT_ID = "corise-airflow"
+# PROJECT_ID = # Modify HERE
 # DESTINATION_BUCKET = # Modify HERE
-BQ_DATASET_NAME = "timeseries_energy"
+# BQ_DATASET_NAME = # Modify HERE
 
 DATA_TYPES = ["generation", "weather"] 
 
@@ -109,7 +109,7 @@ def data_warehouse_transform_dag():
             bucket.blob(f"week-3/{DATA_TYPES[index]}.parquet").upload_from_string(df.to_parquet(), "text/parquet")
             print(df.dtypes)
 
-    @task_group
+    @task
     def create_bigquery_dataset():
         from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateEmptyDatasetOperator
         EmptyOperator(task_id='placeholder')
@@ -146,7 +146,7 @@ def data_warehouse_transform_dag():
         EmptyOperator(task_id='placeholder')
 
 
-    @task_group
+    @task
     def produce_joined_view():
         from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateEmptyTableOperator
         # TODO Modify here to produce a view that joins the two normalized views on time
