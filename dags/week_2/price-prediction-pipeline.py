@@ -221,9 +221,9 @@ def prepare_model_inputs(df_final: pd.DataFrame):
     pca.fit(X_norm[:VAL_END_INDEX])
     X_pca = pca.transform(X_norm)
     dataset_norm = np.concatenate((X_pca, y_norm), axis=1)
-    df_norm = pd.DataFrame(dataset_norm)              # are we keeping the transformed?  Or the originals? 
+    df_norm = pd.DataFrame(dataset_norm)              # are we keeping the transformed?  Or the originals?  we throw away df_norm
+    
     client = GCSHook().get_conn()
-    # 
     write_bucket = client.bucket(DATASET_NORM_WRITE_BUCKET)
     write_bucket.blob(TRAINING_DATA_PATH).upload_from_string(pd.DataFrame(dataset_norm).to_csv())
 
