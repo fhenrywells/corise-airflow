@@ -10,9 +10,9 @@ from airflow.models.dag import DAG
 from airflow.decorators import task, task_group
 
 TRAINING_DATA_PATH = 'week-2/price_prediction_training_data.csv'
-# DATASET_NORM_WRITE_BUCKET = '' # Modify here
+DATASET_NORM_WRITE_BUCKET = 'corise-airflow-wexler' # Modify here
 
-VAL_END_INDEX = 31056
+VAL_END_INDEX = 31056   # Why is this hardcoded?
 
 
 def df_convert_dtypes(df, convert_from, convert_to):
@@ -46,8 +46,7 @@ def post_process_energy_df(df: pd.DataFrame) -> pd.DataFrame:
     Prepare energy dataframe for merge with weather data
     """
 
-
-    # Drop columns that are all 0s\
+    # Drop columns that are all 0s\ based on previous exploration
     import pandas as pd
     df = df.drop(['generation fossil coal-derived gas','generation fossil oil shale', 
                   'generation fossil peat', 'generation geothermal', 
@@ -55,14 +54,15 @@ def post_process_energy_df(df: pd.DataFrame) -> pd.DataFrame:
                   'generation wind offshore', 'forecast wind offshore eday ahead',
                   'total load forecast', 'forecast solar day ahead',
                   'forecast wind onshore day ahead'], 
-                  axis=1)
+                  axis=1)  # 1=columns!
 
-    # Extract timestamp
+    # Extract timestamp (convert to useful, make it the index)
     df['time'] = pd.to_datetime(df['time'], utc=True, infer_datetime_format=True)
     df = df.set_index('time')
 
     # Interpolate the null price values
-    df.interpolate(method='linear', limit_direction='forward', inplace=True, axis=0)
+    df.interpolate(method='linear', limit_direction='forward', inplace=True, axis=0)  # 0=rows
+
     return df
 
 
@@ -83,7 +83,7 @@ def post_process_weather_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(['dt_iso'], axis=1)
     df = df.set_index('time')
 
-    # Reset index and drop records for the same city and time
+    # Reset index and drop records for the same city and time, then put time back as index
     df = df.reset_index().drop_duplicates(subset=['time', 'city_name'],
                                                           keep='first').set_index('time')
 
@@ -91,13 +91,14 @@ def post_process_weather_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(['weather_main', 'weather_id', 
                                   'weather_description', 'weather_icon'], axis=1)
 
-    # Filter out pressure and wind speed outliers
+    # Filter out pressure and wind speed outliers by replacing with nan (NULLs)
     df.loc[df.pressure > 1051, 'pressure'] = np.nan
     df.loc[df.pressure < 931, 'pressure'] = np.nan
     df.loc[df.wind_speed > 50, 'wind_speed'] = np.nan
 
-    # Interpolate for filtered values
+    # Interpolate for filtered values to replace the nulls
     df.interpolate(method='linear', limit_direction='forward', inplace=True, axis=0)
+    
     return df
 
 
@@ -107,9 +108,8 @@ def join_dataframes_and_post_process(df_energy: pd.DataFrame, df_weather: pd.Dat
     Join dataframes and drop city-specific features
     """
 
-
     df_final = df_energy
-    df_1, df_2, df_3, df_4, df_5 = [x for _, x in df_weather.groupby('city_name')]
+    df_1, df_2, df_3, df_4, df_5 = [x for _, x in df_weather.groupby('city_name')]  # groupby here acts as filter
     dfs = [df_1, df_2, df_3, df_4, df_5]
 
     for df in dfs:
@@ -117,7 +117,7 @@ def join_dataframes_and_post_process(df_energy: pd.DataFrame, df_weather: pd.Dat
         city_str = str(city).replace("'", "").replace('[', '').replace(']', '').replace(' ', '')
         df = df.add_suffix('_{}'.format(city_str))
         df_final = df_final.merge(df, on=['time'], how='outer')
-        df_final = df_final.drop('city_name_{}'.format(city_str), axis=1)
+        df_final = df_final.drop('city_name_{}'.format(city_str), axis=1)  # maybe groupby adds city_name_barcelona, etc?
 
 
     cities = ['Barcelona', 'Bilbao', 'Madrid', 'Seville', 'Valencia']
@@ -133,7 +133,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Extract helpful temporal, geographic, and highly correlated energy features
     """
-    # Calculate the weight of every city
+    # Calculate the weight of every city  ?? based on population
     total_pop = 6155116 + 5179243 + 1645342 + 1305342 + 987000
     weight_Madrid = 6155116 / total_pop
     weight_Barcelona = 5179243 / total_pop
@@ -146,27 +146,26 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
                       'Seville': weight_Seville,
                       'Bilbao': weight_Bilbao}
 
-    for i in range(len(df)):
+    for i in range(len(df)):          # row by row
         # Generate 'hour', 'weekday' and 'month' features
-        position = df.index[i]
-        hour = position.hour
-        weekday = position.weekday()
-        month = position.month
+        position = df.index[i]        # which is basically the timestamp
+        hour = position.hour          # datetime: this is just an extractor, not a function. Grr. 1? range(24)
+        weekday = position.weekday()  # datetime function, 0=Monday
+        month = position.month        #     "     1-12
         df.loc[position, 'hour'] = hour
         df.loc[position, 'weekday'] = weekday
         df.loc[position, 'month'] = month
 
-        # Generate 'business hour' feature
-        if (hour > 8 and hour < 14) or (hour > 16 and hour < 21):
+        # Generate 'business hour' feature: not a flag but a 3 group categorical 
+        if (hour > 8 and hour < 14) or (hour > 16 and hour < 21): # leave out 2p-4p for siesta!
             df.loc[position, 'business hour'] = 2
         elif (hour >= 14 and hour <= 16):
-            df.loc[position, 'business hour'] = 1
+            df.loc[position, 'business hour'] = 1                 # Why does Siesta get a 1?  
         else:
             df.loc[position, 'business hour'] = 0
         print("business hours generated")
 
-        # Generate 'weekend' feature
-
+        # Generate 'weekend' feature  # Sunday is a 2, Sat is a 1, other usual "weekdays" are 0
         if (weekday == 6):
             df.loc[position, 'weekday'] = 2
         elif (weekday == 5):
@@ -175,14 +174,14 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
             df.loc[position, 'weekday'] = 0
         print("weekdays generated")
 
-        # Generate 'temp_range' for each city
+        # Generate 'temp_range' for each city  (Per day?  are these columns already present?)
         temp_weighted = 0
         for city in cities_weights.keys():
             temp_max = df.loc[position, 'temp_max_{}'.format(city)]
             temp_min = df.loc[position, 'temp_min_{}'.format(city)]
             df.loc[position, 'temp_range_{}'.format(city)] = abs(temp_max - temp_min)
 
-            # Generated city-weighted temperature 
+            # Generated city-weighted temperature   (  Why are we weighting the temp by pop? And what is this temp? Avg?)
             temp = df.loc[position, 'temp_{}'.format(city)]
             temp_weighted += temp * cities_weights.get('{}'.format(city))
         df.loc[position, 'temp_weighted'] = temp_weighted
@@ -191,6 +190,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
     df['generation coal all'] = df['generation fossil hard coal'] + df['generation fossil brown coal/lignite']
+
     return df
 
 
@@ -206,21 +206,22 @@ def prepare_model_inputs(df_final: pd.DataFrame):
     from sklearn.decomposition import PCA
     from airflow.providers.google.cloud.hooks.gcs import GCSHook
 
-    X = df_final[df_final.columns.drop('price actual')].values
+    X = df_final[df_final.columns.drop('price actual')].values   # Gonna be predicting the price
     y = df_final['price actual'].values
-    y = y.reshape(-1, 1)
+    y = y.reshape(-1, 1)                            # -1 means do whatever you need to to make a 1D numpy array
+    
     scaler_X = MinMaxScaler(feature_range=(0, 1))
     scaler_y = MinMaxScaler(feature_range=(0, 1))
-    scaler_X.fit(X[:VAL_END_INDEX])
+    scaler_X.fit(X[:VAL_END_INDEX])                # Why is this a constant?  
     scaler_y.fit(y[:VAL_END_INDEX])
-    X_norm = scaler_X.transform(X)
+    X_norm = scaler_X.transform(X)                 # Normalized is minmax, not standardized.  Sigh.  
     y_norm = scaler_y.transform(y)
 
-    pca = PCA(n_components=0.80)
+    pca = PCA(n_components=0.80)                    # n_components here is explained variance not specific number
     pca.fit(X_norm[:VAL_END_INDEX])
     X_pca = pca.transform(X_norm)
     dataset_norm = np.concatenate((X_pca, y_norm), axis=1)
-    df_norm = pd.DataFrame(dataset_norm)
+    df_norm = pd.DataFrame(dataset_norm)              # are we keeping the transformed?  Or the originals? 
     client = GCSHook().get_conn()
     # 
     write_bucket = client.bucket(DATASET_NORM_WRITE_BUCKET)
@@ -350,8 +351,9 @@ def join_data_and_add_features():
       4. Adding features to the joined dataframe
       5. Producing a dimension-reduced numpy array containing the most
          significant features, and save it to GCS
+     ?? what format?  
     """
-    output = extract()
+    output = extract()   # Reads the zipped data, returns a dict of dataframes
     df_energy, df_weather =  output["df_energy"], output["df_weather"]
     df_energy = post_process_energy_df(df_energy)
     df_weather = post_process_weather_df(df_weather)
