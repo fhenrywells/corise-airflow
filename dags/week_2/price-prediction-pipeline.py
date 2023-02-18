@@ -112,7 +112,7 @@ def join_dataframes_and_post_process(df_energy: pd.DataFrame, df_weather: pd.Dat
     df_1, df_2, df_3, df_4, df_5 = [x for _, x in df_weather.groupby('city_name')]  # groupby here acts as filter
     dfs = [df_1, df_2, df_3, df_4, df_5]
 
-    for df in dfs:
+    for df in dfs:                                             # This adds the _cityname to each column as part of transpose
         city = df['city_name'].unique()
         city_str = str(city).replace("'", "").replace('[', '').replace(']', '').replace(' ', '')
         df = df.add_suffix('_{}'.format(city_str))
@@ -120,9 +120,9 @@ def join_dataframes_and_post_process(df_energy: pd.DataFrame, df_weather: pd.Dat
         df_final = df_final.drop('city_name_{}'.format(city_str), axis=1)  # maybe groupby adds city_name_barcelona, etc?
 
 
-    cities = ['Barcelona', 'Bilbao', 'Madrid', 'Seville', 'Valencia']
+    cities = ['Barcelona', 'Bilbao', 'Madrid', 'Seville', 'Valencia']   
     for city in cities:
-        df_final = df_final.drop(['rain_3h_{}'.format(city)], axis=1)
+        df_final = df_final.drop(['rain_3h_{}'.format(city)], axis=1)   # after transpose, manually drop these 5 columns
 
     return df_final
 
@@ -163,7 +163,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
             df.loc[position, 'business hour'] = 1                 # Why does Siesta get a 1?  
         else:
             df.loc[position, 'business hour'] = 0
-        print("business hours generated")
+        #print("business hours generated")
 
         # Generate 'weekend' feature  # Sunday is a 2, Sat is a 1, other usual "weekdays" are 0
         if (weekday == 6):
@@ -172,7 +172,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
             df.loc[position, 'weekday'] = 1
         else:
             df.loc[position, 'weekday'] = 0
-        print("weekdays generated")
+        #print("weekdays generated")
 
         # Generate 'temp_range' for each city  (Per day?  are these columns already present?)
         temp_weighted = 0
@@ -186,7 +186,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
             temp_weighted += temp * cities_weights.get('{}'.format(city))
         df.loc[position, 'temp_weighted'] = temp_weighted
 
-        print("city temp features generated")
+        if i % 500 == 0: print(f"city temp features generated for row {i}")
 
 
     df['generation coal all'] = df['generation fossil hard coal'] + df['generation fossil brown coal/lignite']
@@ -206,7 +206,7 @@ def prepare_model_inputs(df_final: pd.DataFrame):
     from sklearn.decomposition import PCA
     from airflow.providers.google.cloud.hooks.gcs import GCSHook
 
-    X = df_final[df_final.columns.drop('price actual')].values   # Gonna be predicting the price
+    X = df_final[df_final.columns.drop('price actual')].values   # Gonna be predicting the price, df_final started at (35064, 78)
     y = df_final['price actual'].values
     y = y.reshape(-1, 1)                            # -1 means do whatever you need to to make a 1D numpy array
     
@@ -220,12 +220,12 @@ def prepare_model_inputs(df_final: pd.DataFrame):
     pca = PCA(n_components=0.80)                    # n_components here is explained variance not specific number
     pca.fit(X_norm[:VAL_END_INDEX])
     X_pca = pca.transform(X_norm)
-    dataset_norm = np.concatenate((X_pca, y_norm), axis=1)
+    dataset_norm = np.concatenate((X_pca, y_norm), axis=1)  # This creates an array of numpy columns.  So, 17 (0-16) cols, last is target
     df_norm = pd.DataFrame(dataset_norm)              # are we keeping the transformed?  Or the originals?  we throw away df_norm
     
     client = GCSHook().get_conn()
     write_bucket = client.bucket(DATASET_NORM_WRITE_BUCKET)
-    write_bucket.blob(TRAINING_DATA_PATH).upload_from_string(pd.DataFrame(dataset_norm).to_csv())
+    write_bucket.blob(TRAINING_DATA_PATH).upload_from_string(pd.DataFrame(dataset_norm).to_csv())   # filename in const Training_Data_Path  Why from string?
 
 
 @task
@@ -255,7 +255,7 @@ def multivariate_data(dataset,
     Produce subset of dataset indexed by data_indices, with a window size of history_size hours
     """
 
-    target = dataset[:, -1]
+    target = dataset[:, -1]    # grabs last column as target. 
     data = []
     labels = []
     for i in data_indices:
@@ -317,7 +317,7 @@ def format_data_and_train_model(dataset_norm: np.ndarray,
     Extract training and validation sets and labels, and train a model with a given
     set of training and validation indices
     """
-    past_history = 24
+    past_history = 24       # 24 hours window
     future_target = 0
     train_indices, val_indices = indices
     print(f"train_indices is {train_indices}, val_indices is {val_indices}")
@@ -359,7 +359,7 @@ def join_data_and_add_features():
     df_weather = post_process_weather_df(df_weather)
     df_final = join_dataframes_and_post_process(df_energy, df_weather)
     df_final = add_features(df_final)
-    prepare_task = prepare_model_inputs(df_final)
+    prepare_task = prepare_model_inputs(df_final)    # By this point, have a 17 col numpy array, written to GCS
 
 
 @task_group
@@ -375,7 +375,7 @@ def train_and_select_best_model():
     Using different train/val splits, train multiple models and select the one with the best evaluation score.
     """
 
-    past_history = 24
+    past_history = 24                           # 24 hours window
     future_target = 0
     dataset_norm = read_dataset_norm()
 
