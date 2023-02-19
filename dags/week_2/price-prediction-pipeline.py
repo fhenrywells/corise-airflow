@@ -14,14 +14,18 @@ DATASET_NORM_WRITE_BUCKET = 'corise-airflow-wexler' # Modify here
 
 VAL_END_INDEX = 31056   # Why is this hardcoded?
 
+#################################
+# Data Prep
+################################
 
+# Utility function for data prep
 def df_convert_dtypes(df, convert_from, convert_to):
     cols = df.select_dtypes(include=[convert_from]).columns
     for col in cols:
         df[col] = df[col].values.astype(convert_to)
     return df
 
-
+# Load the file 
 @task()
 def extract() -> Dict[str, pd.DataFrame]:
     """
@@ -186,7 +190,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
             temp_weighted += temp * cities_weights.get('{}'.format(city))
         df.loc[position, 'temp_weighted'] = temp_weighted
 
-        if i % 500 == 0: print(f"city temp features generated for row {i}")
+        if i % 1000 == 0: print(f"city temp features generated for row {i}")
 
 
     df['generation coal all'] = df['generation fossil hard coal'] + df['generation fossil brown coal/lignite']
@@ -212,7 +216,7 @@ def prepare_model_inputs(df_final: pd.DataFrame):
     
     scaler_X = MinMaxScaler(feature_range=(0, 1))
     scaler_y = MinMaxScaler(feature_range=(0, 1))
-    scaler_X.fit(X[:VAL_END_INDEX])                # Why is this a constant?  
+    scaler_X.fit(X[:VAL_END_INDEX])                # Why is this a constant?  Winds up useful in indices subsamples for model build-and-test  
     scaler_y.fit(y[:VAL_END_INDEX])
     X_norm = scaler_X.transform(X)                 # Normalized is minmax, not standardized.  Sigh.  
     y_norm = scaler_y.transform(y)
@@ -226,6 +230,11 @@ def prepare_model_inputs(df_final: pd.DataFrame):
     client = GCSHook().get_conn()
     write_bucket = client.bucket(DATASET_NORM_WRITE_BUCKET)
     write_bucket.blob(TRAINING_DATA_PATH).upload_from_string(pd.DataFrame(dataset_norm).to_csv())   # filename in const Training_Data_Path  Why from string?
+
+
+######################################################################
+# Model build
+######################################################################
 
 
 @task
@@ -269,8 +278,6 @@ def multivariate_data(dataset,
         else:
             labels.append(target[i : i + target_size])
     return np.array(data), np.array(labels)
-
-
 
 
 
