@@ -315,18 +315,18 @@ def produce_indices() -> List[Tuple[np.ndarray, np.ndarray]]:
     """
     
     # TODO Modify here
-    top_val=35000 # hard coded for safety, this is silly
+    top_val=35000 # hard coded for safety, this is silly; we should pass in parameters of the dataset
     train_indices = []
     val_indices = []
 
     for rng in [0.7, 0.8, 0.9]:    # taking various % of the indices
-        indices = np.random.permutation(range(0,top_val))  #randomize order each time
+        indices = np.random.permutation(range(0,top_val))  # randomize order each time to add some variety
         tr_end = int(min(rng*top_val, VAL_END_INDEX))      # Don't allow training to exceed VAL_END_INDEX
-        train_indices.append(np.array(indices[:tr_end]))   # Slicing the array, prob don't need to force these back to numpy arrays... 
-        val_indices.append((np.array(indices[tr_end:])))
+        train_indices.append(np.array(indices[:tr_end]))   # Slicing the array, python does x:y-1 in slices.  
+        val_indices.append((np.array(indices[tr_end:])))   # prob don't need to force these again to numpy arrays but safe... 
         
-    to_ret = list(zip(train_indices, val_indices))
-    return to_ret
+    return list(zip(train_indices, val_indices))        
+    
     
 
 
@@ -378,6 +378,7 @@ def select_best_model(models: List[xgb.Booster]):
         filename="best_model.json"
         )
     
+    # Note: We don't really learn which version of our indices drove the best model.
 
 
 
@@ -424,8 +425,12 @@ def train_and_select_best_model():
     # TODO: Modify here to select best model and save it to GCS, using above methods including
     # format_data_and_train_model, produce_indices, and select_best_model
 
-    models=format_data_and_train_model.partial(dataset_norm=dataset_norm).expand(indices=produce_indices())
+    models = format_data_and_train_model.partial(dataset_norm=dataset_norm).expand(indices=produce_indices())
     select_best_model(models)
+
+    # The chaining hides some of the complexity of what's going on.  
+    # .partial() has anything constant across calls; .expand() is what differs.  (.partital() is also in functools)
+    # Airflow appears to return a list from the expand()
 
 
 
