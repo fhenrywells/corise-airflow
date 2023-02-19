@@ -373,7 +373,7 @@ def select_best_model(models: List[xgb.Booster]):
     best_model_yet.save_model("best_model.json")   # saves in local, how annoying
     client = GCSHook() # assumes default connection
     client.upload(
-        bucket_name=DATASET_NORM_WRITE_BUCKET
+        bucket_name=DATASET_NORM_WRITE_BUCKET,
         object_name="best_model.json",
         filename="best_model.json"
         )
