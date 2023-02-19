@@ -434,6 +434,11 @@ with DAG("energy_price_prediction",
     schedule_interval=None,
     start_date=datetime(2021, 1, 1),
     tags=['model_training'],
+    catchup=False,
+    default_args={
+        "owner": "wexler", # This defines the value of the "owner" column in the DAG view of the Airflow UI
+        "retries": 2, # If a task fails, it will retry 2 times.
+    },
     render_template_as_native_obj=True,
     concurrency=5
     ) as dag:
