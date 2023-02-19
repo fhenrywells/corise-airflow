@@ -8,6 +8,7 @@ import xgboost as xgb
 from airflow.operators.empty import EmptyOperator
 from airflow.models.dag import DAG
 from airflow.decorators import task, task_group
+from airflow.providers.google.cloud.hooks.gcs import GCSHook
 
 TRAINING_DATA_PATH = 'week-2/price_prediction_training_data.csv'
 DATASET_NORM_WRITE_BUCKET = 'corise-airflow-wexler' # Modify here
@@ -314,6 +315,20 @@ def produce_indices() -> List[Tuple[np.ndarray, np.ndarray]]:
     """
     
     # TODO Modify here
+    top_val=35000 # hard coded for safety, this is silly
+    train_indices = []
+    val_indices = []
+
+    for rng in [0.7, 0.8, 0.9]:    # taking various % of the indices
+        indices = np.random.permutation(range(0,top_val))  #randomize order each time
+        tr_end = int(min(rng*top_val, VAL_END_INDEX))      # Don't allow training to exceed VAL_END_INDEX
+        train_indices.append(np.array(indices[:tr_end]))   # Slicing the array, prob don't need to force these back to numpy arrays... 
+        val_indices.append((np.array(indices[tr_end:])))
+        
+    to_ret = list(zip(train_indices, val_indices))
+    return to_ret
+    
+
 
 
 
@@ -340,12 +355,32 @@ def format_data_and_train_model(dataset_norm: np.ndarray,
 @task
 def select_best_model(models: List[xgb.Booster]):
     """
-    Select model that generalizes the best against the validation set, and 
+    Select model that generalizes the best against it's validation set, and 
     write this to GCS. The best_score is an attribute of the model, and corresponds to
     the highest eval score yielded during training.
     """
 
-   # TODO Modify here
+    # TODO Modify here
+    best_model_yet = None
+    best_score_yet = -1        # impossible value, guaranteed to be lower than 0
+    
+    for model in models:       # simple walk to find highest
+        score=model.best_score
+        if score > best_score_yet:
+            best_score_yet = score
+            best_model_yet = model
+    
+    best_model_yet.save_model("best_model.json")   # saves in local, how annoying
+    client = GCSHook() # assumes default connection
+    client.upload(
+        bucket_name=DATASET_NORM_WRITE_BUCKET
+        object_name="best_model.json",
+        filename="best_model.json"
+        )
+    
+
+
+
 
 
 @task_group
@@ -388,6 +423,10 @@ def train_and_select_best_model():
 
     # TODO: Modify here to select best model and save it to GCS, using above methods including
     # format_data_and_train_model, produce_indices, and select_best_model
+
+    models=format_data_and_train_model.partial(dataset_norm=dataset_norm).expand(indices=produce_indices())
+    select_best_model(models)
+
 
 
 
