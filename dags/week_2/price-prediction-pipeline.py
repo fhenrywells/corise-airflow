@@ -9,13 +9,13 @@ from airflow.operators.empty import EmptyOperator
 from airflow.models.dag import DAG
 from airflow.decorators import task, task_group
 
-from common.week_2.model import multivariate_data, train_xgboost
+from common.week_2.model import multivariate_data, train_xgboost, VAL_END_INDEX
+
 from common.week_2.feature_engineering import join_data_and_add_features
 
 TRAINING_DATA_PATH = 'week-2/price_prediction_training_data.csv'
 # DATASET_NORM_WRITE_BUCKET = '' # Modify here
 
-VAL_END_INDEX = 31056
 
 
 @task

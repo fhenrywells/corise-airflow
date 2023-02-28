@@ -5,7 +5,7 @@ import pandas as pd
 
 from airflow.decorators import task, task_group
 
-
+VAL_END_INDEX = 31056
 
 def df_convert_dtypes(df: pd.DataFrame, convert_from: np.dtype, convert_to: np.dtype):
     cols = df.select_dtypes(include=[convert_from]).columns
