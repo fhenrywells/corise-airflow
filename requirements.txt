@@ -1,5 +1,7 @@
 fsspec
 gcsfs
 pyarrow==8.0.0
-xgboost
+xgboost~=1.7.3
 scikit-learn
+pandas=1.4.1
+numpy~=1.23.5
