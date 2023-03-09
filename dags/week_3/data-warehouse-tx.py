@@ -7,17 +7,16 @@ from airflow.operators.empty import EmptyOperator
 from airflow.decorators import dag, task, task_group
 
 PROJECT_ID = "corise-airflow"
-# DESTINATION_BUCKET = # Modify HERE
+DESTINATION_BUCKET = "corise-airflow-kod"
 BQ_DATASET_NAME = "timeseries_energy"
 
-DATA_TYPES = ["generation", "weather"] 
-
+DATA_TYPES = ["generation", "weather"]
 
 normalized_columns = {
     "generation": {
         "time": "time",
-        "columns": 
-            [   
+        "columns":
+            [
                 "total_load_actual",
                 "price_day_ahead",
                 "price_actual",
@@ -37,10 +36,10 @@ normalized_columns = {
                 "generation_hydro_pumped_storage_consumption"
 
             ]
-        },
+    },
     "weather": {
         "time": "dt_iso",
-        "columns": 
+        "columns":
             [
                 "city_name",
                 "temp",
@@ -53,15 +52,15 @@ normalized_columns = {
                 "snow_3h",
                 "clouds_all",
             ]
-        }
     }
+}
 
 
 @dag(
     schedule_interval=None,
     start_date=datetime(2021, 1, 1),
     catchup=False,
-    ) 
+)
 def data_warehouse_transform_dag():
     """
     ### Data Warehouse Transform DAG
@@ -72,7 +71,6 @@ def data_warehouse_transform_dag():
         4. Builds normalized views on top of the external tables
         5. Builds a joined view on top of the normalized views, joined on time
     """
-
 
     @task
     def extract() -> List[pd.DataFrame]:
@@ -88,7 +86,6 @@ def data_warehouse_transform_dag():
         dfs = [pd.read_csv(ZipFile(filename).open(i)) for i in ZipFile(filename).namelist()]
         return dfs
 
-
     @task
     def load(unzip_result: List[pd.DataFrame]):
         """
@@ -98,8 +95,8 @@ def data_warehouse_transform_dag():
         """
 
         from airflow.providers.google.cloud.hooks.gcs import GCSHook
-        
-        client = GCSHook().get_conn()       
+
+        client = GCSHook().get_conn()
         bucket = client.get_bucket(DESTINATION_BUCKET)
 
         for index, df in enumerate(unzip_result):
@@ -112,10 +109,10 @@ def data_warehouse_transform_dag():
     @task_group
     def create_bigquery_dataset():
         from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateEmptyDatasetOperator
-        EmptyOperator(task_id='placeholder')
-        # TODO Modify here to create a BigQueryDataset if one does not already exist
-        # This is where your tables and views will be created
-    
+        create_dataset = BigQueryCreateEmptyDatasetOperator(
+            task_id="create_dataset",
+            dataset_id=BQ_DATASET_NAME
+        )
 
     @task_group
     def create_external_tables():
@@ -129,30 +126,64 @@ def data_warehouse_transform_dag():
         # related to the built table_resource specifying csvOptions even though the desired format is 
         # PARQUET.
 
+        for file_name in DATA_TYPES:
+            create_external_table = BigQueryCreateExternalTableOperator(
+                task_id=f"{file_name}_create_external_table",
+                destination_project_dataset_table=f"{BQ_DATASET_NAME}.external_table",
+                bucket=DESTINATION_BUCKET,
+                source_objects=[f"week-3/{file_name}.parquet"],
+                schema_fields=[normalized_columns],
+            )
 
     def produce_select_statement(timestamp_column: str, columns: List[str]) -> str:
         # TODO Modify here to produce a select statement by casting 'timestamp_column' to 
         # TIMESTAMP type, and selecting all of the columns in 'columns'
-        pass
+        select_statement = "SELECT "
+        select_statement += f"TIMESTAMP({timestamp_column}) as time"
+        for column in columns:
+            select_statement += f", {column}"
+        return select_statement
 
     @task_group
     def produce_normalized_views():
         from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateEmptyTableOperator
-        # TODO Modify here to produce views for each of the datasources, capturing only the essential
-        # columns specified in normalized_columns. A key step at this stage is to convert the relevant 
-        # columns in each datasource from string to time. The utility function 'produce_select_statement'
-        # accepts the timestamp column, and essential columns for each of the datatypes and build a 
-        # select statement ptogrammatically, which can then be passed to the Airflow Operators.
-        EmptyOperator(task_id='placeholder')
+        tasks = []
+        for file_name in DATA_TYPES:
+
+            select_statement = produce_select_statement(
+                normalized_columns[file_name]["time"],
+                normalized_columns[file_name]["columns"]
+            )
+
+            tasks.append(
+                BigQueryCreateEmptyTableOperator(
+                    task_id=f"{file_name}_create_view",
+                    dataset_id=BQ_DATASET_NAME,
+                    table_id=f"{file_name}_normalized_view",
+                    view={
+                        "query": f"{select_statement} FROM {PROJECT_ID}.{BQ_DATASET_NAME}.{file_name}_external_table",
+                        "useLegacySql": False
+                    },
+                )
+            )
 
 
     @task_group
     def produce_joined_view():
         from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateEmptyTableOperator
-        # TODO Modify here to produce a view that joins the two normalized views on time
-        EmptyOperator(task_id='placeholder')
-
-
+        produced_joined_view = BigQueryCreateEmptyTableOperator(
+                    task_id="produced_joined_view",
+                    dataset_id=BQ_DATASET_NAME,
+                    table_id="merged_view",
+                    view={
+                        "query": f"""
+                         SELECT energy.*, weather.* except (time) FROM {PROJECT_ID}.{BQ_DATASET_NAME}.generation_normalized_view energy
+                         JOIN {PROJECT_ID}.{BQ_DATASET_NAME}.weather_normalized_view weather
+                         ON energy.time = weather.time; 
+                         """,
+                        "useLegacySql": False
+                    }
+                )
     unzip_task = extract()
     load_task = load(unzip_task)
     create_bigquery_dataset_task = create_bigquery_dataset()
