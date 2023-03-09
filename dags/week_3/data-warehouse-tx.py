@@ -119,8 +119,6 @@ def data_warehouse_transform_dag():
         from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateExternalTableOperator
         EmptyOperator(task_id='placeholder')
 
-        # TODO Modify here to produce two external tables, one for each data type, referencing the data stored in GCS
-
         # When using the BigQueryCreateExternalTableOperator, it's suggested you use the table_resource
         # field to specify DDL configuration parameters. If you don't, then you will see an error
         # related to the built table_resource specifying csvOptions even though the desired format is 
@@ -136,7 +134,6 @@ def data_warehouse_transform_dag():
             )
 
     def produce_select_statement(timestamp_column: str, columns: List[str]) -> str:
-        # TODO Modify here to produce a select statement by casting 'timestamp_column' to 
         # TIMESTAMP type, and selecting all of the columns in 'columns'
         select_statement = "SELECT "
         select_statement += f"TIMESTAMP({timestamp_column}) as time"
