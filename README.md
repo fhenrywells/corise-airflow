@@ -1,1 +1,1 @@
-This repo contains stub Airflow code for the projects required to complete my co:rise course [`Effective Data Orchestration with Airflow'](https://corise.com/course/effective-data-orchestration-with-airflow)
+This repo contains stub Airflow code for the projects required to complete my co:rise course [`Airflow Orchestration and Deployment'](https://corise.com/course/effective-data-orchestration-with-airflow)
