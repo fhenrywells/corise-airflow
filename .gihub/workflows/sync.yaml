@@ -1,0 +1,38 @@
+name: Sync S3 DAGs and settings
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+jobs:
+  sync-dags:
+    name: Copy DAGs to S3
+    runs-on: [ self-hosted, default ]
+    steps:
+
+      - name: Assume IAM role
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: eu-west-1
+          role-to-assume: arn:aws:iam::985437859871:role/github-actions-runner
+          role-duration-seconds: 1200
+          role-skip-session-tagging: true
+
+      - name: Fetch pull request files
+        id: fetch-pr-files
+        run: |
+          pr_number=${{ github.event.inputs.pull_request_number }}
+          files=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                      "https://api.github.com/repos/${{ github.repository }}/pulls/${pr_number}/files" \
+                      | jq -r '.[].filename')
+          echo "::set-output name=files::${files}"
+
+      - name: Sync files to S3
+        uses: aws-actions/s3-sync@v3
+        with:
+          args: --delete
+          source: ./dags/
+          dest: s3://your-s3-bucket/${{ github.event.pull_request.head.ref }}

@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+import pandas as pd
 
 from airflow.decorators import dag, task # DAG and task decorators for interfacing with the TaskFlow API
 
