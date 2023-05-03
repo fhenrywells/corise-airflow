@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import List
-
+import numpy as np
 import pandas as pd
+
 from airflow.decorators import dag, task  # DAG and task decorators for interfacing with the TaskFlow API
 
 
